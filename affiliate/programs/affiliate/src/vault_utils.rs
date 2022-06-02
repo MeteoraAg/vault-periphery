@@ -1,0 +1,85 @@
+use anchor_lang::prelude::*;
+use mercurial_vault::cpi::accounts::DepositWithdrawLiquidity;
+use mercurial_vault::cpi::*;
+use mercurial_vault::state::Vault;
+
+pub const PRICE_PRECISION: u128 = 1_000_000_000_000u128;
+
+#[derive(Clone)]
+pub struct MercurialVault;
+
+impl anchor_lang::Id for MercurialVault {
+    fn id() -> Pubkey {
+        mercurial_vault::id()
+    }
+}
+pub struct VaultUtils;
+
+impl VaultUtils {
+    pub fn deposit<'a, 'b, 'c, 'info>(
+        vault: &AccountInfo<'info>,
+        lp_mint: &AccountInfo<'info>,
+        user_token: &AccountInfo<'info>,
+        user_lp: &AccountInfo<'info>,
+        user: &AccountInfo<'info>,
+        token_vault: &AccountInfo<'info>,
+        token_program: &AccountInfo<'info>,
+        vault_program: &AccountInfo<'info>,
+        token_amount: u64,
+        minimum_lp_amount: u64,
+    ) -> Result<()> {
+        let accounts = DepositWithdrawLiquidity {
+            vault: vault.to_account_info(),
+            lp_mint: lp_mint.to_account_info(),
+            user_token: user_token.to_account_info(),
+            user_lp: user_lp.to_account_info(),
+            user: user.to_account_info(),
+            token_vault: token_vault.to_account_info(),
+            token_program: token_program.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(vault_program.to_account_info(), accounts);
+        deposit(cpi_ctx, token_amount, minimum_lp_amount)
+    }
+
+    pub fn withdraw<'a, 'b, 'c, 'info>(
+        vault: &AccountInfo<'info>,
+        lp_mint: &AccountInfo<'info>,
+        user_token: &AccountInfo<'info>,
+        user_lp: &AccountInfo<'info>,
+        user: &AccountInfo<'info>,
+        token_vault: &AccountInfo<'info>,
+        token_program: &AccountInfo<'info>,
+        vault_program: &AccountInfo<'info>,
+        unmint_amount: u64,
+        minimum_out_amount: u64,
+        signers: &[&[&[u8]]],
+    ) -> Result<()> {
+        let accounts = DepositWithdrawLiquidity {
+            vault: vault.to_account_info(),
+            lp_mint: lp_mint.to_account_info(),
+            user_token: user_token.to_account_info(),
+            user_lp: user_lp.to_account_info(),
+            user: user.to_account_info(),
+            token_vault: token_vault.to_account_info(),
+            token_program: token_program.to_account_info(),
+        };
+        let cpi_ctx =
+            CpiContext::new_with_signer(vault_program.to_account_info(), accounts, signers);
+
+        withdraw(cpi_ctx, unmint_amount, minimum_out_amount)
+    }
+}
+
+pub trait Virtualprice {
+    fn get_virtual_price(&self, current_time: u64, lp_supply: u64) -> Option<u64>;
+}
+
+impl Virtualprice for Vault {
+    fn get_virtual_price(&self, current_time: u64, lp_supply: u64) -> Option<u64> {
+        let unlocked_amount = self.get_unlocked_amount(current_time)?;
+        let virtual_price = u128::from(unlocked_amount)
+            .checked_mul(PRICE_PRECISION)?
+            .checked_div(u128::from(lp_supply))?;
+        u64::try_from(virtual_price).ok()
+    }
+}

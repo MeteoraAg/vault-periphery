@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use mercurial_vault::cpi::accounts::DepositWithdrawLiquidity;
+use mercurial_vault::cpi::accounts::{DepositWithdrawLiquidity, WithdrawDirectlyFromStrategy};
 use mercurial_vault::cpi::*;
 use mercurial_vault::state::Vault;
 
@@ -67,6 +67,47 @@ impl VaultUtils {
             CpiContext::new_with_signer(vault_program.to_account_info(), accounts, signers);
 
         withdraw(cpi_ctx, unmint_amount, minimum_out_amount)
+    }
+
+    pub fn withdraw_directly_from_strategy<'a, 'b, 'c, 'info>(
+        vault: &AccountInfo<'info>,
+        strategy: &AccountInfo<'info>,
+        reserve: &AccountInfo<'info>,
+        strategy_program: &AccountInfo<'info>,
+        collateral_vault: &AccountInfo<'info>,
+        token_vault: &AccountInfo<'info>,
+        lp_mint: &AccountInfo<'info>,
+        fee_vault: &AccountInfo<'info>,
+        user_token: &AccountInfo<'info>,
+        user_lp: &AccountInfo<'info>,
+        user: &AccountInfo<'info>,
+        token_program: &AccountInfo<'info>,
+        vault_program: &AccountInfo<'info>,
+        remaining_accounts: &[AccountInfo<'info>],
+        unmint_amount: u64,
+        minimum_out_amount: u64,
+        signers: &[&[&[u8]]],
+    ) -> Result<()> {
+        let accounts = WithdrawDirectlyFromStrategy {
+            vault: vault.clone(),
+            strategy: strategy.clone(),
+            reserve: reserve.clone(),
+            strategy_program: strategy_program.clone(),
+            collateral_vault: collateral_vault.clone(),
+            token_vault: token_vault.clone(),
+            lp_mint: lp_mint.clone(),
+            fee_vault: fee_vault.clone(),
+            user_token: user_token.clone(),
+            user_lp: user_lp.clone(),
+            user: user.clone(),
+            token_program: token_program.clone(),
+        };
+
+        let cpi_ctx =
+            CpiContext::new_with_signer(vault_program.to_account_info(), accounts, signers)
+                .with_remaining_accounts(remaining_accounts.to_vec());
+
+        withdraw_directly_from_strategy(cpi_ctx, unmint_amount, minimum_out_amount)
     }
 }
 

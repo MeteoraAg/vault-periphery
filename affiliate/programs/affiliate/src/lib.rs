@@ -3,13 +3,13 @@
 #![allow(rustdoc::missing_doc_code_examples)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::integer_arithmetic)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 use anchor_lang::prelude::*;
 pub mod vault_utils;
 use crate::vault_utils::{MercurialVault, VaultUtils, Virtualprice, PRICE_PRECISION};
-use anchor_spl::token::{Mint, Token, TokenAccount};
-use mercurial_vault::state::Vault;
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use mercurial_vault::state::{Strategy, Vault};
 use std::str::FromStr;
 use vipers::prelude::*;
 
@@ -25,7 +25,7 @@ pub fn get_admin_address() -> Pubkey {
 pub mod affiliate {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
     /// function can be only called by admin
@@ -133,6 +133,92 @@ pub mod affiliate {
         )?;
         Ok(())
     }
+
+    pub fn withdraw_directly_from_strategy<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, WithdrawDirectlyFromStrategy<'info>>,
+        unmint_amount: u64,
+        min_out_amount: u64,
+    ) -> Result<()> {
+        let partner_key = ctx.accounts.partner.key();
+        let owner_key = ctx.accounts.owner.key();
+        let user_seeds = &[
+            partner_key.as_ref(),
+            owner_key.as_ref(),
+            &[ctx.accounts.user.bump],
+        ];
+
+        let vault = &ctx.accounts.vault.to_account_info();
+        let strategy = &ctx.accounts.strategy.to_account_info();
+        let reserve = &ctx.accounts.reserve.to_account_info();
+        let strategy_program = &ctx.accounts.strategy_program.to_account_info();
+        let collateral_vault = &ctx.accounts.collateral_vault.to_account_info();
+        let lp_mint = &ctx.accounts.vault_lp_mint.to_account_info();
+        let fee_vault = &ctx.accounts.fee_vault.to_account_info();
+        let user_lp = &ctx.accounts.user_lp.to_account_info();
+
+        let user_token = &ctx.accounts.user_token.to_account_info();
+        let token_vault = &ctx.accounts.token_vault.to_account_info();
+        let token_program = &ctx.accounts.token_program.to_account_info();
+        let vault_program = &ctx.accounts.vault_program.to_account_info();
+        let owner = &ctx.accounts.owner.to_account_info();
+        let remaining_accounts = ctx.remaining_accounts;
+        update_liquidity_wrapper(
+            move || {
+                VaultUtils::withdraw_directly_from_strategy(
+                    vault,
+                    strategy,
+                    reserve,
+                    strategy_program,
+                    collateral_vault,
+                    token_vault,
+                    lp_mint,
+                    fee_vault,
+                    user_token,
+                    user_lp,
+                    owner,
+                    token_program,
+                    vault_program,
+                    remaining_accounts,
+                    unmint_amount,
+                    min_out_amount,
+                    &[&user_seeds[..]],
+                )?;
+
+                Ok(())
+            },
+            &mut ctx.accounts.vault,
+            &mut ctx.accounts.vault_lp_mint,
+            &mut ctx.accounts.user_lp,
+            &mut ctx.accounts.partner,
+            &mut ctx.accounts.user,
+        )?;
+        Ok(())
+    }
+
+    /// fund partner the sharing fee
+    pub fn fund_partner<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, FundPartner<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info().clone(),
+                Transfer {
+                    from: ctx.accounts.funder_token.to_account_info(),
+                    to: ctx.accounts.partner_token.to_account_info(),
+                    authority: ctx.accounts.funder.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        // deduct fee amount
+        let partner = &mut ctx.accounts.partner;
+        partner.total_fee = partner
+            .total_fee
+            .checked_sub(amount)
+            .ok_or(VaultError::MathOverflow)?;
+        Ok(())
+    }
 }
 
 /// update liquidity
@@ -153,7 +239,7 @@ pub fn update_liquidity_wrapper<'info>(
         .ok_or(VaultError::MathOverflow)?;
 
     let fee = user
-        .get_fee(virtual_price, user_lp.amount)
+        .get_fee(virtual_price)
         .ok_or(VaultError::MathOverflow)?;
 
     // acrrure fee for partner
@@ -233,9 +319,6 @@ pub struct InitUser<'info> {
 /// Need to check whether we can convert to unchecked account
 #[derive(Accounts)]
 pub struct DepositWithdrawLiquidity<'info> {
-    #[account(mut)]
-    pub vault: Box<Account<'info, Vault>>,
-
     #[account(mut, has_one = vault)]
     pub partner: Box<Account<'info, Partner>>,
 
@@ -243,6 +326,9 @@ pub struct DepositWithdrawLiquidity<'info> {
     pub user: Box<Account<'info, User>>,
 
     pub vault_program: Program<'info, MercurialVault>,
+
+    #[account(mut)]
+    pub vault: Box<Account<'info, Vault>>,
 
     #[account(mut)]
     pub token_vault: Box<Account<'info, TokenAccount>>,
@@ -257,6 +343,71 @@ pub struct DepositWithdrawLiquidity<'info> {
     pub user_lp: Box<Account<'info, TokenAccount>>,
 
     pub owner: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Accounts for withdraw directly from a strategy
+#[derive(Accounts)]
+pub struct WithdrawDirectlyFromStrategy<'info> {
+    #[account(mut, has_one = vault)]
+    pub partner: Box<Account<'info, Partner>>,
+
+    #[account(mut, has_one = partner, has_one = owner)]
+    pub user: Box<Account<'info, User>>,
+
+    pub vault_program: Program<'info, MercurialVault>,
+
+    /// vault
+    #[account(mut)]
+    pub vault: Box<Account<'info, Vault>>,
+    /// strategy
+    #[account(mut)]
+    pub strategy: Box<Account<'info, Strategy>>,
+
+    /// CHECK: Reserve account
+    #[account(mut)]
+    pub reserve: UncheckedAccount<'info>,
+
+    /// CHECK: Strategy program
+    pub strategy_program: UncheckedAccount<'info>,
+    /// collateral_vault
+    #[account(mut)]
+    pub collateral_vault: Box<Account<'info, TokenAccount>>,
+    /// token_vault
+    #[account(mut)]
+    pub token_vault: Box<Account<'info, TokenAccount>>,
+    /// lp_mint
+    #[account(mut)]
+    pub vault_lp_mint: Box<Account<'info, Mint>>,
+    /// fee_vault
+    #[account(mut)]
+    pub fee_vault: Box<Account<'info, TokenAccount>>,
+    /// user_token
+    #[account(mut)]
+    pub user_token: Box<Account<'info, TokenAccount>>,
+    /// user_lp
+    #[account(mut)]
+    pub user_lp: Box<Account<'info, TokenAccount>>,
+    /// user
+    pub owner: Signer<'info>,
+    /// token_program
+    pub token_program: Program<'info, Token>,
+}
+
+/// Need to check whether we can convert to unchecked account
+#[derive(Accounts)]
+pub struct FundPartner<'info> {
+    #[account(mut, has_one = partner_token)]
+    pub partner: Box<Account<'info, Partner>>,
+
+    #[account(mut)]
+    pub partner_token: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub funder_token: Box<Account<'info, TokenAccount>>,
+
+    pub funder: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -296,7 +447,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn get_fee(&mut self, virtual_price: u64, lp_amount: u64) -> Option<u64> {
+    pub fn get_fee(&mut self, virtual_price: u64) -> Option<u64> {
         if virtual_price <= self.current_virtual_price {
             // if virtual price is reduced, then no fee is accrued
             return Some(0);

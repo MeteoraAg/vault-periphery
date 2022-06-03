@@ -44,7 +44,7 @@ SUBCOMMANDS:
 
 ../target/debug/rust-client init-user 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112 
 
-../target/debug/rust-client deposit 100000000 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client deposit 100 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
 
 ../target/debug/rust-client withdraw 100 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
 

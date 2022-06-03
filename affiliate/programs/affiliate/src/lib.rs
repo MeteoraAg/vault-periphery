@@ -25,10 +25,6 @@ const FEE_DENOMINATOR: u128 = 10_000;
 #[program]
 pub mod affiliate {
     use super::*;
-
-    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
-    }
     /// function can be only called by admin
     pub fn init_partner(ctx: Context<InitPartner>, fee_ratio: u64) -> Result<()> {
         let partner = &mut ctx.accounts.partner;
@@ -261,10 +257,6 @@ pub fn update_liquidity_wrapper<'info>(
 
     Ok(())
 }
-
-/// Initialize struct
-#[derive(Accounts)]
-pub struct Initialize {}
 
 /// InitPartner struct
 #[derive(Accounts)]

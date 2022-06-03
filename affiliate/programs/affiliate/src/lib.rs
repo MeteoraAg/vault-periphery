@@ -9,11 +9,11 @@ use anchor_lang::prelude::*;
 pub mod vault_utils;
 use crate::vault_utils::{MercurialVault, VaultUtils, Virtualprice, PRICE_PRECISION};
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
-use mercurial_vault::state::{Strategy, Vault};
+use mercurial_vault::state::Vault;
 use std::str::FromStr;
 use vipers::prelude::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("GacY9YuN16HNRTy7ZWwULPccwvfFSBeNLuAQP7y38Du3");
 
 /// Admin address, only admin can initialize a partner
 pub fn get_admin_address() -> Pubkey {
@@ -21,6 +21,7 @@ pub fn get_admin_address() -> Pubkey {
         .expect("Must be correct Solana address")
 }
 
+const FEE_DENOMINATOR: u128 = 10_000;
 #[program]
 pub mod affiliate {
     use super::*;
@@ -29,10 +30,15 @@ pub mod affiliate {
         Ok(())
     }
     /// function can be only called by admin
-    pub fn init_partner(ctx: Context<InitPartner>) -> Result<()> {
+    pub fn init_partner(ctx: Context<InitPartner>, fee_ratio: u64) -> Result<()> {
         let partner = &mut ctx.accounts.partner;
         partner.vault = ctx.accounts.vault.key();
         partner.partner_token = ctx.accounts.partner_token.key();
+        if fee_ratio > (FEE_DENOMINATOR as u64) || fee_ratio == 0 {
+            return Err(VaultError::InvalidFeeRatio.into());
+        }
+        partner.fee_ratio = fee_ratio;
+
         Ok(())
     }
 
@@ -40,7 +46,7 @@ pub mod affiliate {
     pub fn init_user(ctx: Context<InitUser>) -> Result<()> {
         let user = &mut ctx.accounts.user;
         user.partner = ctx.accounts.partner.key();
-        user.owner = ctx.accounts.signer.key();
+        user.owner = ctx.accounts.owner.key();
         user.bump = unwrap_bump!(ctx, "user");
         Ok(())
     }
@@ -99,6 +105,7 @@ pub mod affiliate {
         ];
 
         let vault = &ctx.accounts.vault.to_account_info();
+        let user = &ctx.accounts.user.to_account_info();
         let vault_lp_mint = &ctx.accounts.vault_lp_mint.to_account_info();
         let user_lp = &ctx.accounts.user_lp.to_account_info();
 
@@ -106,7 +113,6 @@ pub mod affiliate {
         let token_vault = &ctx.accounts.token_vault.to_account_info();
         let token_program = &ctx.accounts.token_program.to_account_info();
         let vault_program = &ctx.accounts.vault_program.to_account_info();
-        let owner = &ctx.accounts.owner.to_account_info();
         update_liquidity_wrapper(
             move || {
                 VaultUtils::withdraw(
@@ -114,7 +120,7 @@ pub mod affiliate {
                     vault_lp_mint,
                     user_token,
                     user_lp,
-                    owner,
+                    user,
                     token_vault,
                     token_program,
                     vault_program,
@@ -160,7 +166,7 @@ pub mod affiliate {
         let token_vault = &ctx.accounts.token_vault.to_account_info();
         let token_program = &ctx.accounts.token_program.to_account_info();
         let vault_program = &ctx.accounts.vault_program.to_account_info();
-        let owner = &ctx.accounts.owner.to_account_info();
+        let user = &ctx.accounts.user.to_account_info();
         let remaining_accounts = ctx.remaining_accounts;
         update_liquidity_wrapper(
             move || {
@@ -175,7 +181,7 @@ pub mod affiliate {
                     fee_vault,
                     user_token,
                     user_lp,
-                    owner,
+                    user,
                     token_program,
                     vault_program,
                     remaining_accounts,
@@ -211,7 +217,7 @@ pub mod affiliate {
             ),
             amount,
         )?;
-        // deduct fee amount
+        // deduct fee amount, if amount > self.total_fee, then it returns MathOverflow
         let partner = &mut ctx.accounts.partner;
         partner.total_fee = partner
             .total_fee
@@ -239,9 +245,11 @@ pub fn update_liquidity_wrapper<'info>(
         .ok_or(VaultError::MathOverflow)?;
 
     let fee = user
-        .get_fee(virtual_price)
+        .get_fee(virtual_price, partner.fee_ratio)
         .ok_or(VaultError::MathOverflow)?;
 
+    msg!("fee: {}", fee);
+    emit!(ParnerFee { fee });
     // acrrure fee for partner
     partner.accrue_fee(fee).ok_or(VaultError::MathOverflow)?;
 
@@ -272,9 +280,9 @@ pub struct InitPartner<'info> {
             space = 200 // data + buffer,
         )]
     pub partner: Box<Account<'info, Partner>>,
-
+    /// CHECK:
     pub vault: Box<Account<'info, Vault>>,
-
+    /// CHECK:
     #[account(constraint = vault.lp_mint == partner_token.mint)]
     pub partner_token: Box<Account<'info, TokenAccount>>,
 
@@ -297,19 +305,19 @@ pub struct InitUser<'info> {
     #[account(
             init,
             seeds = [
-                partner.key().as_ref(), signer.key().as_ref(),
+                partner.key().as_ref(), owner.key().as_ref(),
             ],
             bump,
-            payer = signer,
+            payer = owner,
             space = 200 // data + buffer,
         )]
     pub user: Box<Account<'info, User>>,
-
+    /// CHECK:
     pub partner: Box<Account<'info, Partner>>,
 
     /// signer address
     #[account(mut)]
-    pub signer: Signer<'info>,
+    pub owner: Signer<'info>,
     /// System program account
     pub system_program: Program<'info, System>,
     /// Rent account
@@ -319,75 +327,77 @@ pub struct InitUser<'info> {
 /// Need to check whether we can convert to unchecked account
 #[derive(Accounts)]
 pub struct DepositWithdrawLiquidity<'info> {
+    /// CHECK:
     #[account(mut, has_one = vault)]
     pub partner: Box<Account<'info, Partner>>,
-
+    /// CHECK:
     #[account(mut, has_one = partner, has_one = owner)]
     pub user: Box<Account<'info, User>>,
-
+    /// CHECK:
     pub vault_program: Program<'info, MercurialVault>,
-
+    /// CHECK:
     #[account(mut)]
     pub vault: Box<Account<'info, Vault>>,
-
+    /// CHECK:
     #[account(mut)]
-    pub token_vault: Box<Account<'info, TokenAccount>>,
-
+    pub token_vault: UncheckedAccount<'info>,
+    /// CHECK:
     #[account(mut)]
     pub vault_lp_mint: Box<Account<'info, Mint>>,
-
+    /// CHECK:
     #[account(mut)]
-    pub user_token: Box<Account<'info, TokenAccount>>,
-
-    #[account(mut, has_one = owner)]
+    pub user_token: UncheckedAccount<'info>,
+    /// CHECK:
+    #[account(mut, constraint = user_lp.owner == user.key())] //mint to account of user PDA
     pub user_lp: Box<Account<'info, TokenAccount>>,
-
+    /// CHECK:
     pub owner: Signer<'info>,
-
+    /// CHECK:
     pub token_program: Program<'info, Token>,
 }
 
 /// Accounts for withdraw directly from a strategy
 #[derive(Accounts)]
 pub struct WithdrawDirectlyFromStrategy<'info> {
+    /// CHECK:
     #[account(mut, has_one = vault)]
     pub partner: Box<Account<'info, Partner>>,
-
+    /// CHECK:
     #[account(mut, has_one = partner, has_one = owner)]
     pub user: Box<Account<'info, User>>,
-
+    /// CHECK:
     pub vault_program: Program<'info, MercurialVault>,
 
     /// vault
     #[account(mut)]
     pub vault: Box<Account<'info, Vault>>,
-    /// strategy
+    /// CHECK:
     #[account(mut)]
-    pub strategy: Box<Account<'info, Strategy>>,
+    pub strategy: UncheckedAccount<'info>,
 
-    /// CHECK: Reserve account
+    /// CHECK:: Reserve account
     #[account(mut)]
     pub reserve: UncheckedAccount<'info>,
 
-    /// CHECK: Strategy program
+    /// CHECK:: Strategy program
     pub strategy_program: UncheckedAccount<'info>,
-    /// collateral_vault
+    /// CHECK:
     #[account(mut)]
-    pub collateral_vault: Box<Account<'info, TokenAccount>>,
-    /// token_vault
+    pub collateral_vault: UncheckedAccount<'info>,
+    /// CHECK:
     #[account(mut)]
-    pub token_vault: Box<Account<'info, TokenAccount>>,
+    pub token_vault: UncheckedAccount<'info>,
     /// lp_mint
     #[account(mut)]
     pub vault_lp_mint: Box<Account<'info, Mint>>,
-    /// fee_vault
+    /// CHECK:
     #[account(mut)]
-    pub fee_vault: Box<Account<'info, TokenAccount>>,
-    /// user_token
+    pub fee_vault: UncheckedAccount<'info>,
+    /// CHECK:
     #[account(mut)]
-    pub user_token: Box<Account<'info, TokenAccount>>,
+    pub user_token: UncheckedAccount<'info>,
     /// user_lp
-    #[account(mut)]
+    #[account(mut, constraint = user_lp.owner == user.key())] //unmint from account of user PDA
     pub user_lp: Box<Account<'info, TokenAccount>>,
     /// user
     pub owner: Signer<'info>,
@@ -398,23 +408,24 @@ pub struct WithdrawDirectlyFromStrategy<'info> {
 /// Need to check whether we can convert to unchecked account
 #[derive(Accounts)]
 pub struct FundPartner<'info> {
+    /// CHECK:
     #[account(mut, has_one = partner_token)]
     pub partner: Box<Account<'info, Partner>>,
-
+    /// CHECK:
     #[account(mut)]
     pub partner_token: Box<Account<'info, TokenAccount>>,
-
+    /// CHECK:
     #[account(mut)]
     pub funder_token: Box<Account<'info, TokenAccount>>,
-
+    /// CHECK:
     pub funder: Signer<'info>,
-
+    /// CHECK:
     pub token_program: Program<'info, Token>,
 }
 
 /// Partner struct
 #[account]
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Partner {
     /// partner token address, which is used to get fee later (fee is in lp token)
     partner_token: Pubkey, // 32
@@ -422,6 +433,8 @@ pub struct Partner {
     vault: Pubkey, // 32
     /// total fee that partner get
     total_fee: u64, // 8
+
+    fee_ratio: u64, // 8
 }
 
 impl Partner {
@@ -447,7 +460,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn get_fee(&mut self, virtual_price: u64) -> Option<u64> {
+    pub fn get_fee(&mut self, virtual_price: u64, fee_ratio: u64) -> Option<u64> {
         if virtual_price <= self.current_virtual_price {
             // if virtual price is reduced, then no fee is accrued
             return Some(0);
@@ -457,9 +470,9 @@ impl User {
                 .checked_mul(u128::from(
                     virtual_price.checked_sub(self.current_virtual_price)?,
                 ))?
+                .checked_mul(fee_ratio.into())?
                 .checked_div(virtual_price.into())?
-                .checked_div(PRICE_PRECISION)?
-                .checked_div(5u128)?, // partner get 20*
+                .checked_div(FEE_DENOMINATOR)?, // partner get 20*
         )
         .ok()?;
 
@@ -481,4 +494,13 @@ pub enum VaultError {
     /// InvalidOwner
     #[msg("Invalid owner")]
     InvalidOwner,
+
+    /// InvalidFeeRatio
+    #[msg("Invalid ratio")]
+    InvalidFeeRatio,
+}
+
+#[event]
+pub struct ParnerFee {
+    fee: u64,
 }

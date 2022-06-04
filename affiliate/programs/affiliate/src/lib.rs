@@ -3,11 +3,11 @@
 #![allow(rustdoc::missing_doc_code_examples)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::integer_arithmetic)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 
 use anchor_lang::prelude::*;
 pub mod vault_utils;
-use crate::vault_utils::{MercurialVault, VaultUtils, Virtualprice, PRICE_PRECISION};
+use crate::vault_utils::{MercurialVault, VaultUtils, VirtualPrice};
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use mercurial_vault::state::Vault;
 use std::str::FromStr;
@@ -21,7 +21,10 @@ pub fn get_admin_address() -> Pubkey {
         .expect("Must be correct Solana address")
 }
 
+/// Fee denominator
 const FEE_DENOMINATOR: u128 = 10_000;
+
+/// affiliate program
 #[program]
 pub mod affiliate {
     use super::*;
@@ -47,6 +50,8 @@ pub mod affiliate {
         Ok(())
     }
 
+    /// deposit
+    #[allow(clippy::needless_lifetimes)]
     pub fn deposit<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DepositWithdrawLiquidity>,
         token_amount: u64,
@@ -87,6 +92,8 @@ pub mod affiliate {
         Ok(())
     }
 
+    /// withdraw
+    #[allow(clippy::needless_lifetimes)]
     pub fn withdraw<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DepositWithdrawLiquidity>,
         unmint_amount: u64,
@@ -136,6 +143,8 @@ pub mod affiliate {
         Ok(())
     }
 
+    /// withdraw directly from strategy
+    #[allow(clippy::needless_lifetimes)]
     pub fn withdraw_directly_from_strategy<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, WithdrawDirectlyFromStrategy<'info>>,
         unmint_amount: u64,
@@ -430,6 +439,7 @@ pub struct Partner {
 }
 
 impl Partner {
+    /// accrure fee
     pub fn accrue_fee(&mut self, fee: u64) -> Option<()> {
         self.total_fee = self.total_fee.checked_add(fee)?;
         Some(())
@@ -452,6 +462,7 @@ pub struct User {
 }
 
 impl User {
+    /// get fee per user
     pub fn get_fee(&mut self, virtual_price: u64, fee_ratio: u64) -> Option<u64> {
         if virtual_price <= self.current_virtual_price {
             // if virtual price is reduced, then no fee is accrued
@@ -470,6 +481,8 @@ impl User {
 
         Some(fee)
     }
+
+    /// set new state
     pub fn set_new_state(&mut self, virtual_price: u64, lp_token: u64) {
         self.current_virtual_price = virtual_price;
         self.lp_token = lp_token;
@@ -493,6 +506,7 @@ pub enum VaultError {
 }
 
 #[event]
+/// ParnerFee struct
 pub struct ParnerFee {
     fee: u64,
 }

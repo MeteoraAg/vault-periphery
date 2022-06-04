@@ -1,10 +1,14 @@
+//! Vault utilities
+
 use anchor_lang::prelude::*;
 use mercurial_vault::cpi::accounts::{DepositWithdrawLiquidity, WithdrawDirectlyFromStrategy};
 use mercurial_vault::cpi::*;
 use mercurial_vault::state::Vault;
 
+/// Virtual price precision
 pub const PRICE_PRECISION: u128 = 1_000_000_000_000u128;
 
+/// MercurialVault struct
 #[derive(Clone)]
 pub struct MercurialVault;
 
@@ -13,10 +17,13 @@ impl anchor_lang::Id for MercurialVault {
         mercurial_vault::id()
     }
 }
+/// VaultUtils struct
 pub struct VaultUtils;
 
 impl VaultUtils {
-    pub fn deposit<'a, 'b, 'c, 'info>(
+    /// deposit to vault
+    #[allow(clippy::too_many_arguments)]
+    pub fn deposit<'info>(
         vault: &AccountInfo<'info>,
         lp_mint: &AccountInfo<'info>,
         user_token: &AccountInfo<'info>,
@@ -40,8 +47,9 @@ impl VaultUtils {
         let cpi_ctx = CpiContext::new(vault_program.to_account_info(), accounts);
         deposit(cpi_ctx, token_amount, minimum_lp_amount)
     }
-
-    pub fn withdraw<'a, 'b, 'c, 'info>(
+    /// withdraw from vault
+    #[allow(clippy::too_many_arguments)]
+    pub fn withdraw<'info>(
         vault: &AccountInfo<'info>,
         lp_mint: &AccountInfo<'info>,
         user_token: &AccountInfo<'info>,
@@ -68,8 +76,9 @@ impl VaultUtils {
 
         withdraw(cpi_ctx, unmint_amount, minimum_out_amount)
     }
-
-    pub fn withdraw_directly_from_strategy<'a, 'b, 'c, 'info>(
+    /// withdraw directly from strategy
+    #[allow(clippy::too_many_arguments)]
+    pub fn withdraw_directly_from_strategy<'info>(
         vault: &AccountInfo<'info>,
         strategy: &AccountInfo<'info>,
         reserve: &AccountInfo<'info>,
@@ -110,12 +119,13 @@ impl VaultUtils {
         withdraw_directly_from_strategy(cpi_ctx, unmint_amount, minimum_out_amount)
     }
 }
-
-pub trait Virtualprice {
+/// VirtualPrice trait
+pub trait VirtualPrice {
+    /// get virtual price
     fn get_virtual_price(&self, current_time: u64, lp_supply: u64) -> Option<u64>;
 }
 
-impl Virtualprice for Vault {
+impl VirtualPrice for Vault {
     fn get_virtual_price(&self, current_time: u64, lp_supply: u64) -> Option<u64> {
         let unlocked_amount = self.get_unlocked_amount(current_time)?;
         let virtual_price = u128::from(unlocked_amount)

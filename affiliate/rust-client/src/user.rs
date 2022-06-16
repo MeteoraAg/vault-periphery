@@ -32,7 +32,7 @@ pub fn deposit(
 
     let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
 
-    let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
@@ -95,7 +95,7 @@ pub fn withdraw(
 
     let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
 
-    let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
@@ -140,8 +140,8 @@ pub fn view_user(
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
     let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
-    let lp_mint = vault_state.lp_mint;
-    let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+    let token_mint = vault_state.token_mint;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
 

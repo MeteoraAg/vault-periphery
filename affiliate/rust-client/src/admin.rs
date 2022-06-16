@@ -13,8 +13,8 @@ pub fn init_partner(
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
     let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
-    let lp_mint = vault_state.lp_mint;
-    let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+    let token_mint = vault_state.token_mint;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
 
@@ -48,14 +48,14 @@ pub fn fund_partner(
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
     let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
-    let lp_mint = vault_state.lp_mint;
-    let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+    let token_mint = vault_state.token_mint;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
     let _partner_state: affiliate::Partner = program_client.account(partner)?;
 
-    let funder_token = get_or_create_ata(program_client, lp_mint, program_client.payer())?;
+    let funder_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
     let builder = program_client
         .request()
         .accounts(affiliate::accounts::FundPartner {

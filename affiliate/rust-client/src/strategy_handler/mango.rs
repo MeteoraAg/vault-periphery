@@ -79,7 +79,7 @@ impl StrategyHandler for MangoHandler {
         let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
 
         let partner = Pubkey::from_str(&partner).unwrap();
-        let partner_token = get_or_create_ata(program_client, lp_mint, partner)?;
+        let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
         let (partner, _nonce) = Pubkey::find_program_address(
             &[vault.as_ref(), partner_token.as_ref()],
             &affiliate::id(),

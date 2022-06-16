@@ -40,19 +40,19 @@ SUBCOMMANDS:
 ```
 ../target/debug/rust-client show --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client init-partner 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf 2000 --provider.token_mint So11111111111111111111111111111111111111112 
+../target/debug/rust-client init-partner 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B 2000 --provider.token_mint So11111111111111111111111111111111111111112 
 
-../target/debug/rust-client init-user 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112 
+../target/debug/rust-client init-user 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112 
 
-../target/debug/rust-client deposit 100 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client deposit 100000000 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client withdraw 100 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client withdraw 100 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client withdraw-from-strategy 100 8fSuEU6mnggaSZsYQsSbUS1ytLFPGbFAvANKYd4QWAtx 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client withdraw-from-strategy 100 8fSuEU6mnggaSZsYQsSbUS1ytLFPGbFAvANKYd4QWAtx 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client fund-partner 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf 37 --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client fund-partner 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B 37 --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client view-partner 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client view-partner 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client view-user 4sBMz7zmDWPzdEnECJW3NA9mEcNwkjYtVnL2KySaWYAf --provider.token_mint So11111111111111111111111111111111111111112
+../target/debug/rust-client view-user 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112
 ```

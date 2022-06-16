@@ -7,9 +7,11 @@
 
 use anchor_lang::prelude::*;
 pub mod vault_utils;
+use crate::vault_utils::PRICE_PRECISION;
 use crate::vault_utils::{MercurialVault, VaultUtils, VirtualPrice};
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use mercurial_vault::state::Vault;
+use mercurial_vault::{PERFORMANCE_FEE_DENOMINATOR, PERFORMANCE_FEE_NUMERATOR};
 use std::str::FromStr;
 use vipers::prelude::*;
 
@@ -283,8 +285,8 @@ pub struct InitPartner<'info> {
     pub partner: Box<Account<'info, Partner>>,
     /// CHECK:
     pub vault: Box<Account<'info, Vault>>,
-    /// CHECK:
-    #[account(constraint = vault.lp_mint == partner_token.mint)]
+    /// CHECK: partner_token mint must be same as native token in vault
+    #[account(constraint = vault.token_mint == partner_token.mint)]
     pub partner_token: Box<Account<'info, TokenAccount>>,
 
     /// Admin address
@@ -468,18 +470,24 @@ impl User {
             // if virtual price is reduced, then no fee is accrued
             return Some(0);
         }
-        let fee = u64::try_from(
-            u128::from(self.lp_token)
-                .checked_mul(u128::from(
-                    virtual_price.checked_sub(self.current_virtual_price)?,
-                ))?
+        let yield_earned = u128::from(self.lp_token)
+            .checked_mul(u128::from(
+                virtual_price.checked_sub(self.current_virtual_price)?,
+            ))?
+            .checked_div(PRICE_PRECISION)?;
+
+        let performance_fee_by_vault = yield_earned
+            .checked_mul(PERFORMANCE_FEE_NUMERATOR)?
+            .checked_div(PERFORMANCE_FEE_DENOMINATOR)?;
+
+        let fee_sharing = u64::try_from(
+            performance_fee_by_vault
                 .checked_mul(fee_ratio.into())?
-                .checked_div(virtual_price.into())?
-                .checked_div(FEE_DENOMINATOR)?, // partner get 20*
+                .checked_div(FEE_DENOMINATOR)?,
         )
         .ok()?;
 
-        Some(fee)
+        Some(fee_sharing)
     }
 
     /// set new state

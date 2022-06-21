@@ -21,7 +21,7 @@ If a user is new with this partner, before sending deposit/withdraw transactions
 pub fn init_user(ctx: Context<InitUser>)
 ```
 
-Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/affiliate_readme/affiliate/rust-client/src/partner.rs#L8">init_user_instruction</a>
+Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/main/affiliate/rust-client/src/partner.rs#L8">init_user_instruction</a>
 
 Every time a user deposit/withdraw, the partner has to send along with user PDA and partner PDA to track the yield that user has earned. Then program would know the performance fee per this user and update fee for the partner 
 
@@ -32,4 +32,4 @@ If a user has been routed through the parner, the partner can skip this step.
 
 When a user deposits, lp token will be minted to user PDA token account, which only this user can sign the user PDA token account to withdraw the fund. LP tokens are kept in user PDA allowing the program to track the parner fee when the user withdraws. 
 
-Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/affiliate_readme/affiliate/rust-client/src/user.rs">sample instructions</a>
+Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/main/affiliate/rust-client/src/user.rs">sample instructions</a>

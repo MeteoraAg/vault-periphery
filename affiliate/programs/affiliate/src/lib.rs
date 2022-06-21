@@ -430,20 +430,29 @@ pub struct FundPartner<'info> {
 #[account]
 #[derive(Debug)]
 pub struct Partner {
-    /// partner token address, which is used to get fee later (fee is in lp token)
+    /// partner token address, which is used to get fee later (fee is in native token)
     partner_token: Pubkey, // 32
     /// vault address that partner integrates
     vault: Pubkey, // 32
-    /// total fee that partner get
+    /// total fee that partner get, but haven't sent yet
     total_fee: u64, // 8
-
+    /// fee ratio partner get in performance fee
     fee_ratio: u64, // 8
+    // cummulative fee partner get from start
+    cummulative_fee: u128, // 16
 }
 
 impl Partner {
     /// accrure fee
     pub fn accrue_fee(&mut self, fee: u64) -> Option<()> {
         self.total_fee = self.total_fee.checked_add(fee)?;
+        let max = u128::MAX;
+        let buffer = max - self.cummulative_fee;
+        let fee: u128 = fee.into();
+        if buffer >= fee {
+            // only add if we have enough room
+            self.cummulative_fee = self.cummulative_fee.checked_add(fee)?;
+        }
         Some(())
     }
 }

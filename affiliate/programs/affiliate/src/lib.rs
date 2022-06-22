@@ -418,7 +418,7 @@ pub struct FundPartner<'info> {
     #[account(mut)]
     pub partner_token: Box<Account<'info, TokenAccount>>,
     /// CHECK:
-    #[account(mut)]
+    #[account(mut, constraint = funder_token.key() != partner_token.key() @ VaultError::WrongFunderToken)]
     pub funder_token: Box<Account<'info, TokenAccount>>,
     /// CHECK:
     pub funder: Signer<'info>,
@@ -520,6 +520,9 @@ pub enum VaultError {
     /// InvalidFeeRatio
     #[msg("Invalid ratio")]
     InvalidFeeRatio,
+
+    #[msg("Funder token account must be different from partner token account")]
+    WrongFunderToken,
 }
 
 #[event]

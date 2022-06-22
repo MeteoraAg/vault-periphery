@@ -85,7 +85,8 @@ pub enum UserCommand {
 
 #[derive(Debug, Parser)]
 pub enum AdminCommand {
-    InitPartner { partner: String, fee_ratio: u64 },
+    InitPartner { partner: String },
+    UpdateFeeRatio { partner: String, fee_ratio: u64 },
     FundPartner { partner: String, amount: u64 },
 }
 
@@ -191,8 +192,9 @@ fn main() -> Result<()> {
             }
         },
         Command::Admin(admin) => match admin {
-            AdminCommand::InitPartner { partner, fee_ratio } => {
-                init_partner(&program_client, vault, partner, fee_ratio)?
+            AdminCommand::InitPartner { partner } => init_partner(&program_client, vault, partner)?,
+            AdminCommand::UpdateFeeRatio { partner, fee_ratio } => {
+                update_fee_ratio(&program_client, vault, partner, fee_ratio)?
             }
             AdminCommand::FundPartner { partner, amount } => {
                 fund_partner(&program_client, vault, partner, amount)?

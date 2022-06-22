@@ -25,11 +25,11 @@ Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/main
 
 Every time a user deposit/withdraw, the partner has to send along with user PDA and partner PDA to track the yield that user has earned. Then program would know the performance fee per this user and update fee for the partner 
 
-If a user has been routed through the parner, the partner can skip this step. 
+If a user has been routed through the partner, the partner can skip this step. 
 
 
 ## User deposit/withdraw/withdraw_from_strategy
 
-When a user deposits, lp token will be minted to user PDA token account, which only this user can sign the user PDA token account to withdraw the fund. LP tokens are kept in user PDA allowing the program to track the parner fee when the user withdraws. 
+When a user deposits, lp token will be minted to user PDA token account, which only this user can sign the user PDA token account to withdraw the fund. LP tokens are kept in user PDA allowing the program to track the partner fee when the user withdraws. 
 
 Refer to <a href="https://github.com/mercurial-finance/vault-periphery/blob/main/affiliate/rust-client/src/user.rs">sample instructions</a>

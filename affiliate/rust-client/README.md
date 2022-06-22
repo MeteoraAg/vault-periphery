@@ -40,7 +40,9 @@ SUBCOMMANDS:
 ```
 ../target/debug/rust-client show --provider.token_mint So11111111111111111111111111111111111111112
 
-../target/debug/rust-client init-partner 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B 2000 --provider.token_mint So11111111111111111111111111111111111111112 
+../target/debug/rust-client init-partner 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112 
+
+../target/debug/rust-client update-fee-ratio 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B 2000 --provider.token_mint So11111111111111111111111111111111111111112 
 
 ../target/debug/rust-client init-user 9pxiKDu6yFGxSxKiFERV31UpA6y4BpbuGeBjAKeLic8B --provider.token_mint So11111111111111111111111111111111111111112 
 

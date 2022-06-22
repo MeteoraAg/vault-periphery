@@ -25,21 +25,28 @@ pub fn get_admin_address() -> Pubkey {
 
 /// Fee denominator
 const FEE_DENOMINATOR: u128 = 10_000;
+const DEFAULT_FEE_RATIO: u64 = 5_000; // 50%
 
 /// affiliate program
 #[program]
 pub mod affiliate {
     use super::*;
     /// function can be only called by admin
-    pub fn init_partner(ctx: Context<InitPartner>, fee_ratio: u64) -> Result<()> {
+    pub fn init_partner(ctx: Context<InitPartner>) -> Result<()> {
         let partner = &mut ctx.accounts.partner;
         partner.vault = ctx.accounts.vault.key();
         partner.partner_token = ctx.accounts.partner_token.key();
-        if fee_ratio > (FEE_DENOMINATOR as u64) || fee_ratio == 0 {
+        partner.fee_ratio = DEFAULT_FEE_RATIO;
+        Ok(())
+    }
+
+    /// function can be only called by admin
+    pub fn update_fee_ratio(ctx: Context<UpdateFeeRatio>, fee_ratio: u64) -> Result<()> {
+        let partner = &mut ctx.accounts.partner;
+        if fee_ratio > FEE_DENOMINATOR as u64 {
             return Err(VaultError::InvalidFeeRatio.into());
         }
         partner.fee_ratio = fee_ratio;
-
         Ok(())
     }
 
@@ -299,6 +306,18 @@ pub struct InitPartner<'info> {
     pub rent: Sysvar<'info, Rent>,
     /// Token program account
     pub token_program: Program<'info, Token>,
+}
+
+/// UpdateFeeRatio struct
+#[derive(Accounts)]
+pub struct UpdateFeeRatio<'info> {
+    /// Vault account
+    #[account(mut)]
+    pub partner: Box<Account<'info, Partner>>,
+
+    /// Admin address
+    #[account(constraint = admin.key() == get_admin_address())]
+    pub admin: Signer<'info>,
 }
 
 /// InitUser struct

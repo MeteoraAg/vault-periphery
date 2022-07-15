@@ -231,10 +231,10 @@ pub mod affiliate {
             ),
             amount,
         )?;
-        // deduct fee amount, if amount > self.total_fee, then it returns MathOverflow
+        // deduct fee amount, if amount > self.outstanding_fee, then it returns MathOverflow
         let partner = &mut ctx.accounts.partner;
-        partner.total_fee = partner
-            .total_fee
+        partner.outstanding_fee = partner
+            .outstanding_fee
             .checked_sub(amount)
             .ok_or(VaultError::MathOverflow)?;
         Ok(())
@@ -454,7 +454,7 @@ pub struct Partner {
     /// vault address that partner integrates
     vault: Pubkey, // 32
     /// total fee that partner get, but haven't sent yet
-    total_fee: u64, // 8
+    outstanding_fee: u64, // 8
     /// fee ratio partner get in performance fee
     fee_ratio: u64, // 8
     // cummulative fee partner get from start
@@ -464,7 +464,7 @@ pub struct Partner {
 impl Partner {
     /// accrure fee
     pub fn accrue_fee(&mut self, fee: u64) -> Option<()> {
-        self.total_fee = self.total_fee.checked_add(fee)?;
+        self.outstanding_fee = self.outstanding_fee.checked_add(fee)?;
         let max = u128::MAX;
         let buffer = max - self.cummulative_fee;
         let fee: u128 = fee.into();

@@ -1,4 +1,4 @@
-//! Affilicate program
+//! Affiliate program
 #![deny(rustdoc::all)]
 #![allow(rustdoc::missing_doc_code_examples)]
 #![warn(clippy::unwrap_used)]
@@ -263,7 +263,7 @@ pub fn update_liquidity_wrapper<'info>(
         .ok_or(VaultError::MathOverflow)?;
 
     msg!("fee: {}", fee);
-    emit!(ParnerFee { fee });
+    emit!(PartnerFee { fee });
     // acrrure fee for partner
     partner.accrue_fee(fee).ok_or(VaultError::MathOverflow)?;
 
@@ -450,27 +450,27 @@ pub struct FundPartner<'info> {
 #[derive(Debug)]
 pub struct Partner {
     /// partner token address, which is used to get fee later (fee is in native token)
-    partner_token: Pubkey, // 32
+    pub partner_token: Pubkey, // 32
     /// vault address that partner integrates
-    vault: Pubkey, // 32
+    pub vault: Pubkey, // 32
     /// total fee that partner get, but haven't sent yet
-    outstanding_fee: u64, // 8
+    pub outstanding_fee: u64, // 8
     /// fee ratio partner get in performance fee
-    fee_ratio: u64, // 8
-    // cummulative fee partner get from start
-    cummulative_fee: u128, // 16
+    pub fee_ratio: u64, // 8
+    // cumulative fee partner get from start
+    pub cumulative_fee: u128, // 16
 }
 
 impl Partner {
-    /// accrure fee
+    /// accrue fee
     pub fn accrue_fee(&mut self, fee: u64) -> Option<()> {
         self.outstanding_fee = self.outstanding_fee.checked_add(fee)?;
         let max = u128::MAX;
-        let buffer = max - self.cummulative_fee;
+        let buffer = max - self.cumulative_fee;
         let fee: u128 = fee.into();
         if buffer >= fee {
             // only add if we have enough room
-            self.cummulative_fee = self.cummulative_fee.checked_add(fee)?;
+            self.cumulative_fee = self.cumulative_fee.checked_add(fee)?;
         }
         Some(())
     }
@@ -485,7 +485,7 @@ pub struct User {
     partner: Pubkey,
     /// current virtual price
     current_virtual_price: u64,
-    /// lp_tokenthat user holds
+    /// lp_token that user holds
     lp_token: u64,
     /// user bump
     bump: u8,
@@ -545,7 +545,7 @@ pub enum VaultError {
 }
 
 #[event]
-/// ParnerFee struct
-pub struct ParnerFee {
+/// PartnerFee struct
+pub struct PartnerFee {
     fee: u64,
 }

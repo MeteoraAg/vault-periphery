@@ -127,6 +127,10 @@ pub trait VirtualPrice {
 
 impl VirtualPrice for Vault {
     fn get_virtual_price(&self, current_time: u64, lp_supply: u64) -> Option<u64> {
+        // When the vault is newly created, or the vault liquidity is fully withdrawn
+        if lp_supply == 0 {
+            return u64::try_from(PRICE_PRECISION).ok(); // virtual price = 1
+        }
         let unlocked_amount = self.get_unlocked_amount(current_time)?;
         let virtual_price = u128::from(unlocked_amount)
             .checked_mul(PRICE_PRECISION)?

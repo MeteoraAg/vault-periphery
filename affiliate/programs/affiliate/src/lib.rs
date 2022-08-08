@@ -18,8 +18,15 @@ use vipers::prelude::*;
 declare_id!("GacY9YuN16HNRTy7ZWwULPccwvfFSBeNLuAQP7y38Du3");
 
 /// Admin address, only admin can initialize a partner
+#[cfg(not(feature = "test-bpf"))]
 pub fn get_admin_address() -> Pubkey {
     Pubkey::from_str("DHLXnJdACTY83yKwnUkeoDjqi4QBbsYGa1v8tJL76ViX")
+        .expect("Must be correct Solana address")
+}
+
+#[cfg(feature = "test-bpf")]
+pub fn get_admin_address() -> Pubkey {
+    Pubkey::from_str("Bccqc3RqWiijGkmkoctraTSCdAaXHJFMj5jvnpHKGtkM")
         .expect("Must be correct Solana address")
 }
 
@@ -56,6 +63,10 @@ pub mod affiliate {
         user.partner = ctx.accounts.partner.key();
         user.owner = ctx.accounts.owner.key();
         user.bump = unwrap_bump!(ctx, "user");
+        ctx.accounts
+            .partner
+            .increase_user_count()
+            .ok_or(VaultError::MathOverflow)?;
         Ok(())
     }
 
@@ -98,6 +109,7 @@ pub mod affiliate {
             &mut ctx.accounts.partner,
             &mut ctx.accounts.user,
         )?;
+
         Ok(())
     }
 
@@ -264,14 +276,23 @@ pub fn update_liquidity_wrapper<'info>(
 
     msg!("fee: {}", fee);
     emit!(PartnerFee { fee });
-    // acrrure fee for partner
+    // accrue fee for partner
     partner.accrue_fee(fee).ok_or(VaultError::MathOverflow)?;
+
+    let before_user_liquidity = user.get_liquidity().ok_or(VaultError::MathOverflow)?;
 
     update_liquidity_fn()?;
 
     // save new user state
     user_lp.reload()?;
     user.set_new_state(virtual_price, user_lp.amount);
+
+    let after_user_liquidity = user.get_liquidity().ok_or(VaultError::MathOverflow)?;
+
+    // update total liquidity routed
+    partner
+        .update_liquidity(before_user_liquidity, after_user_liquidity)
+        .ok_or(VaultError::MathOverflow)?;
 
     Ok(())
 }
@@ -334,7 +355,8 @@ pub struct InitUser<'info> {
             space = 200 // data + buffer,
         )]
     pub user: Box<Account<'info, User>>,
-    /// CHECK:
+    /// Partner account
+    #[account(mut)]
     pub partner: Box<Account<'info, Partner>>,
 
     /// signer address
@@ -457,8 +479,12 @@ pub struct Partner {
     pub outstanding_fee: u64, // 8
     /// fee ratio partner get in performance fee
     pub fee_ratio: u64, // 8
-    // cumulative fee partner get from start
+    /// cumulative fee partner get from start
     pub cumulative_fee: u128, // 16
+    /// total users from the partner
+    pub user_count: u64,
+    /// total liquidity routed from users
+    pub liquidity: u128,
 }
 
 impl Partner {
@@ -474,26 +500,48 @@ impl Partner {
         }
         Some(())
     }
+    /// increase user count
+    pub fn increase_user_count(&mut self) -> Option<()> {
+        self.user_count = self.user_count.checked_add(1)?;
+        Some(())
+    }
+    /// update total liquidity routed from users
+    pub fn update_liquidity(&mut self, before: u64, after: u64) -> Option<()> {
+        if self.liquidity == 0 {
+            self.liquidity = after.into();
+            return Some(());
+        }
+        self.liquidity = self
+            .liquidity
+            .checked_sub(before.into())?
+            .checked_add(after.into())?;
+        Some(())
+    }
 }
 
 /// User struct
 #[account]
 #[derive(Default, Debug)]
 pub struct User {
-    owner: Pubkey,
+    /// owner of the user account
+    pub owner: Pubkey,
     /// partner address, each user can integrate with more partners
-    partner: Pubkey,
+    pub partner: Pubkey,
     /// current virtual price
-    current_virtual_price: u64,
+    pub current_virtual_price: u64,
     /// lp_token that user holds
-    lp_token: u64,
+    pub lp_token: u64,
     /// user bump
-    bump: u8,
+    pub bump: u8,
 }
 
 impl User {
     /// get fee per user
     pub fn get_fee(&mut self, virtual_price: u64, fee_ratio: u64) -> Option<u64> {
+        // User has fully withdrawn all of his/her fund or it's new user
+        if self.current_virtual_price == 0 {
+            return Some(0);
+        }
         if virtual_price <= self.current_virtual_price {
             // if virtual price is reduced, then no fee is accrued
             return Some(0);
@@ -518,10 +566,24 @@ impl User {
         Some(fee_sharing)
     }
 
+    /// get user liquidity based on lp token and virtual price
+    pub fn get_liquidity(&self) -> Option<u64> {
+        let lp_token: u128 = self.lp_token.into();
+        let current_virtual_price: u128 = self.current_virtual_price.into();
+        let liquidity = lp_token
+            .checked_mul(current_virtual_price)?
+            .checked_div(vault_utils::PRICE_PRECISION)?;
+        liquidity.try_into().ok()
+    }
+
     /// set new state
     pub fn set_new_state(&mut self, virtual_price: u64, lp_token: u64) {
-        self.current_virtual_price = virtual_price;
         self.lp_token = lp_token;
+        if self.lp_token == 0 {
+            self.current_virtual_price = 0;
+        } else {
+            self.current_virtual_price = virtual_price;
+        }
     }
 }
 

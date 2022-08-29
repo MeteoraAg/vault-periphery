@@ -17,6 +17,8 @@ pub fn init_user(
     let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
+    println!("{} {}", partner, partner_token);
+    // return Ok(());
     // check whether partner is existed
     let _partner_state: affiliate::Partner = program_client.account(partner)?;
 

@@ -86,6 +86,7 @@ pub enum UserCommand {
 #[derive(Debug, Parser)]
 pub enum AdminCommand {
     InitPartner { partner: String },
+    InitPartnerAllVault { partner: String },
     UpdateFeeRatio { partner: String, fee_ratio: u64 },
     FundPartner { partner: String, amount: u64 },
 }
@@ -103,7 +104,9 @@ pub struct Opts {
     #[clap(subcommand)]
     pub command: Command,
 }
-fn main() -> Result<()> {
+
+#[tokio::main]
+async fn main() -> Result<()> {
     let opts = Opts::parse();
 
     let payer = match opts.cfg_override.wallet {
@@ -112,7 +115,7 @@ fn main() -> Result<()> {
     };
     let url = match opts.cfg_override.cluster {
         Some(cluster) => cluster,
-        None => Cluster::Devnet,
+        None => Cluster::Mainnet,
     };
 
     let client = Client::new_with_options(
@@ -193,6 +196,9 @@ fn main() -> Result<()> {
         },
         Command::Admin(admin) => match admin {
             AdminCommand::InitPartner { partner } => init_partner(&program_client, vault, partner)?,
+            AdminCommand::InitPartnerAllVault { partner } => {
+                init_partner_all_vault(&program_client, partner).await?
+            }
             AdminCommand::UpdateFeeRatio { partner, fee_ratio } => {
                 update_fee_ratio(&program_client, vault, partner, fee_ratio)?
             }

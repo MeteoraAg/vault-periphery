@@ -12,7 +12,7 @@ anchor-spl = {version = "0.24.2"}
 anchor-client = {version = "0.24.2"}
 anyhow = "1.0"
 clap = {version = "3.0.10", features=["derive"]}
-mercurial-vault = { git="https://github.com/mercurial-finance/mercurial_sdk", features= ["cpi", "devnet"], rev="acc76a17f275cc2698dc570afde83028f1608a81" }
+mercurial-vault = { version="0.4.2", features= ["cpi", "devnet"] }
 affiliate =  { path = "../programs/affiliate"}
 solana-program = "1.9.17"
 solana-sdk = "1.9.17"

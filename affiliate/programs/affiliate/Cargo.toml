@@ -1,6 +1,6 @@
 [package]
 name = "affiliate"
-version = "0.1.0"
+version = "0.1.1"
 description = "Created with Anchor"
 edition = "2021"
 
@@ -19,7 +19,7 @@ default = []
 overflow-checks = true
 
 [dependencies]
-anchor-lang = "0.24.2"
-anchor-spl = "0.24.2"
+anchor-lang = "0.25.0"
+anchor-spl = "0.25.0"
 vipers = "2.0.2"
-mercurial-vault = { version="0.4.2", features= ["cpi"] }
+mercurial-vault = { version="0.4.4", features= ["cpi"] }

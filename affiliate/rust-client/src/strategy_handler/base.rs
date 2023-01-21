@@ -1,4 +1,3 @@
-use crate::strategy_handler::mango::MangoHandler;
 use crate::strategy_handler::port_finance_without_lm::PortFinanceWithoutLMHandler;
 use crate::strategy_handler::solend_with_lm::SolendWithLMHandler;
 use crate::strategy_handler::solend_without_lm::SolendWithoutLMHandler;
@@ -11,7 +10,7 @@ pub fn get_strategy_handler(strategy_type: StrategyType) -> Box<dyn StrategyHand
         StrategyType::PortFinanceWithoutLM => Box::new(PortFinanceWithoutLMHandler {}),
         StrategyType::PortFinanceWithLM => panic!("Protocol is not supported"),
         StrategyType::SolendWithoutLM => Box::new(SolendWithoutLMHandler {}),
-        StrategyType::Mango => Box::new(MangoHandler {}),
+        StrategyType::Mango => panic!("Protocol is not supported"),
         StrategyType::SolendWithLM => Box::new(SolendWithLMHandler {}),
         _ => panic!(),
     }

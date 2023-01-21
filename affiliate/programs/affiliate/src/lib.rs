@@ -13,7 +13,6 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use mercurial_vault::state::Vault;
 use mercurial_vault::{PERFORMANCE_FEE_DENOMINATOR, PERFORMANCE_FEE_NUMERATOR};
 use std::str::FromStr;
-use vipers::prelude::*;
 
 declare_id!("GacY9YuN16HNRTy7ZWwULPccwvfFSBeNLuAQP7y38Du3");
 
@@ -55,7 +54,7 @@ pub mod affiliate {
         let user = &mut ctx.accounts.user;
         user.partner = ctx.accounts.partner.key();
         user.owner = ctx.accounts.owner.key();
-        user.bump = unwrap_bump!(ctx, "user");
+        user.bump = *ctx.bumps.get("user").ok_or(VaultError::InvalidBump)?;
         Ok(())
     }
 
@@ -535,6 +534,10 @@ pub enum VaultError {
     /// InvalidOwner
     #[msg("Invalid owner")]
     InvalidOwner,
+
+    /// InvalidBump
+    #[msg("Invalid bump")]
+    InvalidBump,
 
     /// InvalidFeeRatio
     #[msg("Invalid ratio")]

@@ -14,7 +14,7 @@ pub fn deposit(
     partner: String,
     token_amount: u64,
 ) -> Result<()> {
-    println!("deposit {}", token_amount);
+    println!("deposit {} partner {}", token_amount, partner);
     let partner = Pubkey::from_str(&partner).unwrap();
 
     let (vault, _vault_bump) = Pubkey::find_program_address(
@@ -78,7 +78,7 @@ pub fn withdraw(
     partner: String,
     unmint_amount: u64,
 ) -> Result<()> {
-    println!("withdraw {} lp token", unmint_amount);
+    println!("withdraw {} lp token partner {}", unmint_amount, partner);
     let partner = Pubkey::from_str(&partner).unwrap();
     let (vault, _vault_bump) = Pubkey::find_program_address(
         &[b"vault".as_ref(), token_mint.as_ref(), base.as_ref()],
@@ -96,6 +96,10 @@ pub fn withdraw(
     let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
 
     let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    println!(
+        "withdraw {} lp token partner {} {}",
+        unmint_amount, partner, partner_token
+    );
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed

@@ -7,25 +7,24 @@ edition = "2018"
 devnet = []
 
 [dependencies]
-anchor-lang = {version = "0.25.0"}
-anchor-spl = {version = "0.25.0"}
-anchor-client = {version = "0.25.0"}
+anchor-lang = {version = "0.26.0"}
+anchor-spl = {version = "0.26.0"}
+anchor-client = {version = "0.26.0"}
 anyhow = "1.0"
 clap = {version = "3.0.10", features=["derive"]}
-mercurial-vault = { version="0.4.4", features= ["cpi", "devnet"] }
-affiliate =  { path = "../programs/affiliate", features = ["cpi"] }
-solana-program = "1.9.17"
-solana-sdk = "1.9.17"
-spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
+mercurial-vault = { git = "https://github.com/mercurial-finance/vault-sdk", rev="ccc3132e97ed25bff677e88fc06f7db5e43332ca", features = ["cpi"] }
+affiliate =  { path = "../programs/affiliate"}
+spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
-spl-associated-token-account = { version = "1.0.2", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.1.2", features = ["no-entrypoint"] }
 rust_decimal="1.20.0"
 port-variable-rate-lending-instructions = "0.3.0"
-solend-program = { git="https://github.com/mercurial-finance/solana-program-library", rev ="68f815523377428f29cb6db1803f1d5de509ea5f", features = [ "no-entrypoint" ]  }
+solend-program = { git="https://github.com/mercurial-finance/solana-program-library", rev="bff3df14cab2dba01dce044bb6cfc0aa86ff45c3", features = [ "no-entrypoint" ] }
 bincode = "^1.3.1"
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 serde_json="1.0.85"
 serde = { version = "1.0.104", features = ["derive"] }
 hyper-tls="0.5.0"
-switchboard-utils = "=0.1.32"
+solana-program = "1.14.12"
+solana-sdk = "1.14.12"

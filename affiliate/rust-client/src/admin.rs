@@ -117,7 +117,7 @@ pub async fn init_partner_all_vault(
     partner: String,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
-    let url = "https://vaults.mercurial.finance/api/vault_info";
+    let url = "https://merv2-api.mercurial.finance/vault_info";
 
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);

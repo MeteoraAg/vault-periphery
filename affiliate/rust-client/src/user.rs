@@ -1,9 +1,11 @@
 use anyhow::Result;
 use solana_program::program_pack::Pack;
 use solana_program::pubkey::Pubkey;
+use solana_program::sysvar;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::system_instruction;
+use solana_sdk::system_program;
 use spl_associated_token_account;
 use std::str::FromStr;
 
@@ -42,7 +44,23 @@ pub fn deposit(
         &affiliate::id(),
     );
     // check whether user is existed
-    let _user_state: affiliate::User = program_client.account(user)?;
+    let rpc_client = program_client.rpc();
+    if rpc_client.get_account_data(&user).is_err() {
+        // create user account
+        let builder = program_client
+            .request()
+            .accounts(affiliate::accounts::InitUser {
+                user,
+                partner,
+                owner: program_client.payer(),
+                system_program: system_program::id(),
+                rent: sysvar::rent::ID,
+            })
+            .args(affiliate::instruction::InitUser {});
+
+        let signature = builder.send()?;
+        println!("create user {}", signature);
+    }
 
     let user_lp = get_or_create_ata(program_client, lp_mint, user)?;
 
@@ -110,7 +128,23 @@ pub fn withdraw(
     );
     let user_lp = get_or_create_ata(program_client, lp_mint, user)?;
     // check whether user is existed
-    let _user_state: affiliate::User = program_client.account(user)?;
+    let rpc_client = program_client.rpc();
+    if rpc_client.get_account_data(&user).is_err() {
+        // create user account
+        let builder = program_client
+            .request()
+            .accounts(affiliate::accounts::InitUser {
+                user,
+                partner,
+                owner: program_client.payer(),
+                system_program: system_program::id(),
+                rent: sysvar::rent::ID,
+            })
+            .args(affiliate::instruction::InitUser {});
+
+        let signature = builder.send()?;
+        println!("create user {}", signature);
+    }
 
     let builder = program_client
         .request()

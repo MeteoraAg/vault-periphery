@@ -58,6 +58,15 @@ pub mod affiliate {
         Ok(())
     }
 
+    /// function can be only called by user
+    pub fn init_user_permissionless(ctx: Context<InitUserPermissionless>) -> Result<()> {
+        let user = &mut ctx.accounts.user;
+        user.partner = ctx.accounts.partner.key();
+        user.owner = ctx.accounts.owner.key();
+        user.bump = *ctx.bumps.get("user").ok_or(VaultError::InvalidBump)?;
+        Ok(())
+    }
+
     /// deposit
     #[allow(clippy::needless_lifetimes)]
     pub fn deposit<'a, 'b, 'c, 'info>(
@@ -343,6 +352,33 @@ pub struct InitUser<'info> {
     pub system_program: Program<'info, System>,
     /// Rent account
     pub rent: Sysvar<'info, Rent>,
+}
+
+/// InitUser struct
+#[derive(Accounts)]
+pub struct InitUserPermissionless<'info> {
+    /// User account
+    #[account(
+            init,
+            seeds = [
+                partner.key().as_ref(), owner.key().as_ref(),
+            ],
+            bump,
+            payer = payer,
+            space = 200 // data + buffer,
+        )]
+    pub user: Box<Account<'info, User>>,
+    /// CHECK:
+    pub partner: Box<Account<'info, Partner>>,
+
+    /// CHECK: Owner of the wallet
+    pub owner: UncheckedAccount<'info>,
+
+    /// signer address
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// System program account
+    pub system_program: Program<'info, System>,
 }
 
 /// Need to check whether we can convert to unchecked account

@@ -49,14 +49,14 @@ pub fn deposit(
         // create user account
         let builder = program_client
             .request()
-            .accounts(affiliate::accounts::InitUser {
+            .accounts(affiliate::accounts::InitUserPermissionless {
                 user,
                 partner,
                 owner: program_client.payer(),
+                payer: program_client.payer(),
                 system_program: system_program::id(),
-                rent: sysvar::rent::ID,
             })
-            .args(affiliate::instruction::InitUser {});
+            .args(affiliate::instruction::InitUserPermissionless {});
 
         let signature = builder.send()?;
         println!("create user {}", signature);
@@ -133,14 +133,14 @@ pub fn withdraw(
         // create user account
         let builder = program_client
             .request()
-            .accounts(affiliate::accounts::InitUser {
+            .accounts(affiliate::accounts::InitUserPermissionless {
                 user,
                 partner,
                 owner: program_client.payer(),
+                payer: program_client.payer(),
                 system_program: system_program::id(),
-                rent: sysvar::rent::ID,
             })
-            .args(affiliate::instruction::InitUser {});
+            .args(affiliate::instruction::InitUserPermissionless {});
 
         let signature = builder.send()?;
         println!("create user {}", signature);

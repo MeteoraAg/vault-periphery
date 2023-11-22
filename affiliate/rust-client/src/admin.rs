@@ -5,19 +5,20 @@ use hyper_tls::HttpsConnector;
 use serde::Deserialize;
 use solana_program::sysvar;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signer::Signer;
 use solana_sdk::system_program;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::str::FromStr;
-
-pub fn init_partner(
-    program_client: &anchor_client::Program,
+pub async fn init_partner<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     vault: Pubkey,
     partner: String,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let token_mint = vault_state.token_mint;
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
 
@@ -34,26 +35,26 @@ pub fn init_partner(
         })
         .args(affiliate::instruction::InitPartner {});
 
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
 
     Ok(())
 }
 
-pub fn update_fee_ratio(
-    program_client: &anchor_client::Program,
+pub async fn update_fee_ratio<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     vault: Pubkey,
     partner: String,
     fee_ratio: u64,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let token_mint = vault_state.token_mint;
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
-    let _partner_state: affiliate::Partner = program_client.account(partner)?;
+    let _partner_state: affiliate::Partner = program_client.account(partner).await?;
 
     let builder = program_client
         .request()
@@ -63,28 +64,29 @@ pub fn update_fee_ratio(
         })
         .args(affiliate::instruction::UpdateFeeRatio { fee_ratio });
 
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
 
     Ok(())
 }
 
-pub fn fund_partner(
-    program_client: &anchor_client::Program,
+pub async fn fund_partner<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     vault: Pubkey,
     partner: String,
     amount: u64,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let token_mint = vault_state.token_mint;
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
-    let _partner_state: affiliate::Partner = program_client.account(partner)?;
+    let _partner_state: affiliate::Partner = program_client.account(partner).await?;
 
-    let funder_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
+    let funder_token =
+        get_or_create_ata(program_client, token_mint, program_client.payer()).await?;
     let builder = program_client
         .request()
         .accounts(affiliate::accounts::FundPartner {
@@ -96,7 +98,7 @@ pub fn fund_partner(
         })
         .args(affiliate::instruction::FundPartner { amount });
 
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
 
     Ok(())
@@ -112,8 +114,8 @@ pub struct VaultInfo {
     pub token_address: String,
 }
 
-pub async fn init_partner_all_vault(
-    program_client: &anchor_client::Program,
+pub async fn init_partner_all_vault<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     partner: String,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
@@ -139,7 +141,7 @@ pub async fn init_partner_all_vault(
             &mercurial_vault::id(),
         );
 
-        let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+        let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
         let (partner_pubkey, _nonce) = Pubkey::find_program_address(
             &[vault_pubkey.as_ref(), partner_token.as_ref()],
             &affiliate::id(),
@@ -155,7 +157,7 @@ pub async fn init_partner_all_vault(
                 partner.to_string(),
                 vault.symbol
             );
-            init_partner(program_client, vault_pubkey, partner.to_string())?;
+            init_partner(program_client, vault_pubkey, partner.to_string()).await?;
         } else {
             println!(
                 "partner {} with vault {} is existed",

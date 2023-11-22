@@ -7,10 +7,11 @@ use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::system_instruction;
 use solana_sdk::system_program;
 use spl_associated_token_account;
+use std::ops::Deref;
 use std::str::FromStr;
 
-pub fn deposit(
-    program_client: &anchor_client::Program,
+pub async fn deposit<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     token_mint: Pubkey,
     base: Pubkey,
     partner: String,
@@ -29,16 +30,16 @@ pub fn deposit(
         &mercurial_vault::id(),
     );
 
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let lp_mint = vault_state.lp_mint;
 
-    let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
+    let user_token = get_or_create_ata(program_client, token_mint, program_client.payer()).await?;
 
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
-    let _partner_state: affiliate::Partner = program_client.account(partner)?;
+    let _partner_state: affiliate::Partner = program_client.account(partner).await?;
     let (user, _nonce) = Pubkey::find_program_address(
         &[partner.as_ref(), program_client.payer().as_ref()],
         &affiliate::id(),
@@ -58,11 +59,11 @@ pub fn deposit(
             })
             .args(affiliate::instruction::InitUserPermissionless {});
 
-        let signature = builder.send()?;
+        let signature = builder.send().await?;
         println!("create user {}", signature);
     }
 
-    let user_lp = get_or_create_ata(program_client, lp_mint, user)?;
+    let user_lp = get_or_create_ata(program_client, lp_mint, user).await?;
 
     let builder = program_client
         .request()
@@ -83,14 +84,14 @@ pub fn deposit(
             minimum_lp_token_amount: 0,
         });
 
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
 
     Ok(())
 }
 
-pub fn withdraw(
-    program_client: &anchor_client::Program,
+pub async fn withdraw<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     token_mint: Pubkey,
     base: Pubkey,
     partner: String,
@@ -108,12 +109,12 @@ pub fn withdraw(
         &mercurial_vault::id(),
     );
 
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let lp_mint = vault_state.lp_mint;
 
-    let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
+    let user_token = get_or_create_ata(program_client, token_mint, program_client.payer()).await?;
 
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     println!(
         "withdraw {} lp token partner {} {}",
         unmint_amount, partner, partner_token
@@ -121,12 +122,12 @@ pub fn withdraw(
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
     // check whether partner is existed
-    let _partner_state: affiliate::Partner = program_client.account(partner)?;
+    let _partner_state: affiliate::Partner = program_client.account(partner).await?;
     let (user, _nonce) = Pubkey::find_program_address(
         &[partner.as_ref(), program_client.payer().as_ref()],
         &affiliate::id(),
     );
-    let user_lp = get_or_create_ata(program_client, lp_mint, user)?;
+    let user_lp = get_or_create_ata(program_client, lp_mint, user).await?;
     // check whether user is existed
     let rpc_client = program_client.rpc();
     if rpc_client.get_account_data(&user).is_err() {
@@ -142,7 +143,7 @@ pub fn withdraw(
             })
             .args(affiliate::instruction::InitUserPermissionless {});
 
-        let signature = builder.send()?;
+        let signature = builder.send().await?;
         println!("create user {}", signature);
     }
 
@@ -165,21 +166,21 @@ pub fn withdraw(
             min_out_amount: 0,
         });
 
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
 
     Ok(())
 }
 
-pub fn view_user(
-    program_client: &anchor_client::Program,
+pub async fn view_user<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     vault: Pubkey,
     partner: String,
 ) -> Result<()> {
     let partner = Pubkey::from_str(&partner).unwrap();
-    let vault_state: mercurial_vault::state::Vault = program_client.account(vault)?;
+    let vault_state: mercurial_vault::state::Vault = program_client.account(vault).await?;
     let token_mint = vault_state.token_mint;
-    let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+    let partner_token = get_or_create_ata(program_client, token_mint, partner).await?;
     let (partner, _nonce) =
         Pubkey::find_program_address(&[vault.as_ref(), partner_token.as_ref()], &affiliate::id());
 
@@ -188,14 +189,14 @@ pub fn view_user(
         &affiliate::id(),
     );
     // check whether user is existed
-    let user_state: affiliate::User = program_client.account(user)?;
+    let user_state: affiliate::User = program_client.account(user).await?;
     println!("{:?}", user_state);
 
     Ok(())
 }
 
-pub fn get_or_create_ata(
-    program_client: &anchor_client::Program,
+pub async fn get_or_create_ata<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     token_mint: Pubkey,
     user: Pubkey,
 ) -> Result<Pubkey> {
@@ -213,14 +214,14 @@ pub fn get_or_create_ata(
             ),
         );
 
-        let signature = builder.send()?;
+        let signature = builder.send().await?;
         println!("{}", signature);
     }
     Ok(user_token_account)
 }
 
-pub fn create_mint(
-    program_client: &anchor_client::Program,
+pub async fn create_mint<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     mint_keypair: &Keypair,
     authority: Pubkey,
     decimals: u8,
@@ -253,7 +254,7 @@ pub fn create_mint(
     let builder = instructions
         .into_iter()
         .fold(builder, |bld, ix| bld.instruction(ix));
-    let signature = builder.send()?;
+    let signature = builder.send().await?;
     println!("{}", signature);
     Ok(())
 }

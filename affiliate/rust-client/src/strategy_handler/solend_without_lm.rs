@@ -1,6 +1,8 @@
 use crate::strategy_handler::base::StrategyHandler;
 use crate::strategy_handler::solend_adapter::SolendReserve;
 use crate::user::get_or_create_ata;
+use crate::utils::get_program;
+use anchor_client::Cluster;
 use anchor_lang::InstructionData;
 use anchor_lang::ToAccountMetas;
 use anyhow::Result;
@@ -9,19 +11,24 @@ use solana_program::pubkey::Pubkey;
 use solana_program::sysvar;
 use solana_sdk::instruction::AccountMeta;
 use solana_sdk::instruction::Instruction;
+use solana_sdk::signer::keypair::Keypair;
+use solana_sdk::signer::Signer;
+use std::ops::Deref;
 use std::str::FromStr;
 pub struct SolendWithoutLMHandler {}
 
 impl StrategyHandler for SolendWithoutLMHandler {
     fn withdraw_directly_from_strategy(
         &self,
-        program_client: &anchor_client::Program,
+        url: Cluster,
+        payer: &Keypair,
         strategy: Pubkey,
         token_mint: Pubkey,
         base: Pubkey,
         partner: String,
         amount: u64,
     ) -> Result<()> {
+        let program_client = get_program(url, payer)?;
         let (vault, _vault_bump) = Pubkey::find_program_address(
             &[
                 mercurial_vault::seed::VAULT_PREFIX.as_ref(),
@@ -51,10 +58,10 @@ impl StrategyHandler for SolendWithoutLMHandler {
             &get_solend_program_id(),
         );
 
-        let user_token = get_or_create_ata(program_client, token_mint, program_client.payer())?;
+        let user_token = get_or_create_ata(&program_client, token_mint, program_client.payer())?;
 
         let partner = Pubkey::from_str(&partner).unwrap();
-        let partner_token = get_or_create_ata(program_client, token_mint, partner)?;
+        let partner_token = get_or_create_ata(&program_client, token_mint, partner)?;
         let (partner, _nonce) = Pubkey::find_program_address(
             &[vault.as_ref(), partner_token.as_ref()],
             &affiliate::id(),
@@ -67,7 +74,7 @@ impl StrategyHandler for SolendWithoutLMHandler {
         );
         // check whether user is existed
         let _user_state: affiliate::User = program_client.account(user)?;
-        let user_lp = get_or_create_ata(program_client, vault_state.lp_mint, user)?;
+        let user_lp = get_or_create_ata(&program_client, vault_state.lp_mint, user)?;
         let mut accounts = affiliate::accounts::WithdrawDirectlyFromStrategy {
             partner,
             user,

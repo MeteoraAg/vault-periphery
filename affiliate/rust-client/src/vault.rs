@@ -5,12 +5,17 @@ use bincode::deserialize;
 use solana_program::sysvar;
 use solana_program::sysvar::clock::Clock;
 use solana_sdk::signature::Keypair;
+use solana_sdk::signer::Signer;
 use std::convert::TryFrom;
+use std::ops::Deref;
 
-pub fn show(program_client: &anchor_client::Program, vault: Pubkey) -> Result<()> {
-    let vault_data: mercurial_vault::state::Vault = program_client.account(vault)?;
+pub async fn show<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
+    vault: Pubkey,
+) -> Result<()> {
+    let vault_data: mercurial_vault::state::Vault = program_client.account(vault).await?;
     println!("VAULT DATA: {:#?}", vault_data);
-    let token_mint: anchor_spl::token::Mint = program_client.account(vault_data.lp_mint)?;
+    let token_mint: anchor_spl::token::Mint = program_client.account(vault_data.lp_mint).await?;
 
     let current_timestamp = get_current_node_clock_time(program_client)?;
 
@@ -22,7 +27,7 @@ pub fn show(program_client: &anchor_client::Program, vault: Pubkey) -> Result<()
     );
 
     let token_data: anchor_spl::token::TokenAccount =
-        program_client.account(vault_data.token_vault)?;
+        program_client.account(vault_data.token_vault).await?;
 
     println!("TOKEN AMOUNT: {}", token_data.amount);
 
@@ -30,7 +35,7 @@ pub fn show(program_client: &anchor_client::Program, vault: Pubkey) -> Result<()
     for (i, &strategy_pubkey) in vault_data.strategies.iter().enumerate() {
         if strategy_pubkey != Pubkey::default() {
             let strategy_state: mercurial_vault::state::Strategy =
-                program_client.account(strategy_pubkey)?;
+                program_client.account(strategy_pubkey).await?;
 
             println!("STRATEGY DATA {}: {:#?}", strategy_pubkey, strategy_state);
 
@@ -42,7 +47,9 @@ pub fn show(program_client: &anchor_client::Program, vault: Pubkey) -> Result<()
     Ok(())
 }
 
-pub fn get_current_node_clock_time(program_client: &anchor_client::Program) -> Result<u64> {
+pub fn get_current_node_clock_time<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
+) -> Result<u64> {
     let rpc = program_client.rpc();
     let clock_account = rpc.get_account(&sysvar::clock::id())?;
     let clock = deserialize::<Clock>(&clock_account.data)?;
@@ -50,8 +57,8 @@ pub fn get_current_node_clock_time(program_client: &anchor_client::Program) -> R
     Ok(current_time)
 }
 
-pub fn get_unlocked_amount(
-    program_client: &anchor_client::Program,
+pub fn get_unlocked_amount<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     vault: Pubkey,
     payer: &Keypair,
 ) -> Result<()> {

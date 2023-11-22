@@ -1,14 +1,18 @@
 use anchor_client::solana_client::rpc_response::RpcSimulateTransactionResult;
-use anchor_client::RequestBuilder;
+use anchor_client::Client;
 use anchor_client::{
     solana_client::rpc_response::Response,
     solana_sdk::{signature::Signer, transaction::Transaction},
     Program,
 };
+use anchor_client::{Cluster, RequestBuilder};
 use anyhow::Result;
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::keypair::read_keypair_file;
+use std::ops::Deref;
+use std::rc::Rc;
 
 pub fn parse_event_log<
     T: anchor_lang::AnchorDeserialize + anchor_lang::AnchorSerialize + anchor_lang::Discriminator,
@@ -35,9 +39,9 @@ pub fn parse_event_log<
     None
 }
 
-pub fn simulate_transaction(
-    builder: &RequestBuilder,
-    program: &Program,
+pub fn simulate_transaction<C: Deref<Target = impl Signer> + Clone>(
+    builder: &RequestBuilder<C>,
+    program: &Program<C>,
     signers: &Vec<&dyn Signer>,
 ) -> Result<Response<RpcSimulateTransactionResult>, Box<dyn std::error::Error>> {
     let instructions = builder.instructions()?;
@@ -53,8 +57,8 @@ pub fn simulate_transaction(
     Ok(simulation)
 }
 
-pub fn get_or_create_ata(
-    program_client: &anchor_client::Program,
+pub async fn get_or_create_ata<C: Deref<Target = impl Signer> + Clone>(
+    program_client: &anchor_client::Program<C>,
     token_mint: Pubkey,
     user: Pubkey,
 ) -> Result<Pubkey> {
@@ -72,7 +76,7 @@ pub fn get_or_create_ata(
             ),
         );
 
-        let signature = builder.send()?;
+        let signature = builder.send().await?;
         println!("{}", signature);
     }
     Ok(user_token_account)
@@ -81,4 +85,19 @@ pub fn get_or_create_ata(
 pub fn default_keypair() -> Keypair {
     read_keypair_file(&*shellexpand::tilde("~/.config/solana/id.json"))
         .expect("Requires a keypair file")
+}
+
+pub fn get_program(
+    url: Cluster,
+    // payer: &Keypair,
+) -> Result<anchor_client::Program<Rc<solana_sdk::signature::Keypair>>> {
+    let payer = default_keypair();
+    let client = Client::new_with_options(
+        url,
+        Rc::new(Keypair::from_bytes(&payer.to_bytes())?),
+        CommitmentConfig::processed(),
+    );
+
+    let program_client = client.program(affiliate::id())?;
+    return Ok(program_client);
 }

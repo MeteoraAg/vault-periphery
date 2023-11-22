@@ -1,9 +1,12 @@
 use crate::strategy_handler::port_finance_without_lm::PortFinanceWithoutLMHandler;
 use crate::strategy_handler::solend_with_lm::SolendWithLMHandler;
 use crate::strategy_handler::solend_without_lm::SolendWithoutLMHandler;
+use anchor_client::Cluster;
 use anyhow::Result;
+use async_trait::async_trait;
 use mercurial_vault::strategy::base::StrategyType;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::signature::Keypair;
 
 pub fn get_strategy_handler(strategy_type: StrategyType) -> Box<dyn StrategyHandler> {
     match strategy_type {
@@ -16,10 +19,12 @@ pub fn get_strategy_handler(strategy_type: StrategyType) -> Box<dyn StrategyHand
     }
 }
 
+#[async_trait]
 pub trait StrategyHandler {
-    fn withdraw_directly_from_strategy(
+    async fn withdraw_directly_from_strategy(
         &self,
-        program_client: &anchor_client::Program,
+        url: Cluster,
+        // payer: &Keypair,
         strategy: Pubkey,
         token_mint: Pubkey,
         base: Pubkey,

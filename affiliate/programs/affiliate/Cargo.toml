@@ -1,6 +1,6 @@
 [package]
 name = "affiliate"
-version = "0.1.1"
+version = "0.1.2"
 description = "Created with Anchor"
 edition = "2021"
 
@@ -19,6 +19,6 @@ default = []
 overflow-checks = true
 
 [dependencies]
-anchor-lang = "0.26.0"
-anchor-spl = "0.26.0"
-mercurial-vault = { git = "https://github.com/mercurial-finance/vault-sdk", rev="ccc3132e97ed25bff677e88fc06f7db5e43332ca", features = ["cpi"] }
+anchor-lang = "0.28.0"
+anchor-spl = "0.28.0"
+mercurial-vault = { git = "https://github.com/mercurial-finance/vault-sdk", rev="b8c4e9f2b6ef28550a2145e11dc68a7cdf953c0d", features = ["cpi"] }

@@ -1,6 +1,6 @@
 mod admin;
 mod partner;
-mod strategy_handler;
+// mod strategy_handler;
 mod user;
 mod utils;
 mod vault;
@@ -14,7 +14,7 @@ use anyhow::Result;
 use clap::Parser;
 use mercurial_vault::get_base_key;
 use solana_sdk::signature::{read_keypair_file, Keypair};
-use strategy_handler::base::get_strategy_handler;
+// use strategy_handler::base::get_strategy_handler;
 
 use crate::utils::default_keypair;
 use admin::*;
@@ -65,22 +65,14 @@ pub enum VaultCommand {
 
 #[derive(Debug, Parser)]
 pub enum UserCommand {
-    Deposit {
-        token_amount: u64,
-        partner: String,
-    },
-    Withdraw {
-        unmint_amount: u64,
-        partner: String,
-    },
-    WithdrawFromStrategy {
-        unmint_amount: u64,
-        strategy: Pubkey,
-        partner: String,
-    },
-    ViewUser {
-        partner: String,
-    },
+    Deposit { token_amount: u64, partner: String },
+    Withdraw { unmint_amount: u64, partner: String },
+    // WithdrawFromStrategy {
+    //     unmint_amount: u64,
+    //     strategy: Pubkey,
+    //     partner: String,
+    // },
+    ViewUser { partner: String },
 }
 
 #[derive(Debug, Parser)]
@@ -115,11 +107,11 @@ async fn main() -> Result<()> {
     };
     let url = match opts.cfg_override.cluster {
         Some(cluster) => cluster,
-        None => Cluster::Mainnet,
+        None => Cluster::Devnet,
     };
 
     let client = Client::new_with_options(
-        url,
+        url.clone(),
         Rc::new(Keypair::from_bytes(&payer.to_bytes())?),
         CommitmentConfig::processed(),
     );
@@ -129,7 +121,7 @@ async fn main() -> Result<()> {
         None => affiliate::id(),
     };
 
-    let program_client = client.program(program_id);
+    let program_client = client.program(program_id)?;
 
     let token_mint = match opts.cfg_override.token_mint {
         Some(token_mint) => Pubkey::from_str(&token_mint).unwrap(),
@@ -154,7 +146,7 @@ async fn main() -> Result<()> {
     // Fee payer is the admin
     match opts.command {
         Command::Vault(vault_command) => match vault_command {
-            VaultCommand::Show {} => show(&program_client, vault)?,
+            VaultCommand::Show {} => show(&program_client, vault).await?,
             VaultCommand::GetUnlockedAmount {} => {
                 get_unlocked_amount(&program_client, vault, &payer)?
             }
@@ -163,47 +155,52 @@ async fn main() -> Result<()> {
             UserCommand::Deposit {
                 token_amount,
                 partner,
-            } => deposit(&program_client, token_mint, base, partner, token_amount)?,
+            } => deposit(&program_client, token_mint, base, partner, token_amount).await?,
             UserCommand::Withdraw {
                 unmint_amount,
                 partner,
-            } => withdraw(&program_client, token_mint, base, partner, unmint_amount)?,
-            UserCommand::WithdrawFromStrategy {
-                unmint_amount,
-                strategy,
-                partner,
-            } => {
-                let strategy_state: mercurial_vault::state::Strategy =
-                    program_client.account(strategy)?;
+            } => withdraw(&program_client, token_mint, base, partner, unmint_amount).await?,
+            // UserCommand::WithdrawFromStrategy {
+            //     unmint_amount,
+            //     strategy,
+            //     partner,
+            // } => {
+            //     let strategy_state: mercurial_vault::state::Strategy =
+            //         program_client.account(strategy)?;
 
-                let strategy_handler = get_strategy_handler(strategy_state.strategy_type);
-                strategy_handler.withdraw_directly_from_strategy(
-                    &program_client,
-                    strategy,
-                    token_mint,
-                    base,
-                    partner,
-                    unmint_amount,
-                )?
-            }
-            UserCommand::ViewUser { partner } => view_user(&program_client, vault, partner)?,
+            //     let strategy_handler = get_strategy_handler(strategy_state.strategy_type);
+            //     strategy_handler.withdraw_directly_from_strategy(
+            //         url,
+            //         &payer,
+            //         strategy,
+            //         token_mint,
+            //         base,
+            //         partner,
+            //         unmint_amount,
+            //     )?
+            // }
+            UserCommand::ViewUser { partner } => view_user(&program_client, vault, partner).await?,
         },
         Command::Partner(partner) => match partner {
-            PartnerCommand::InitUser { partner } => init_user(&program_client, vault, partner)?,
+            PartnerCommand::InitUser { partner } => {
+                init_user(&program_client, vault, partner).await?
+            }
             PartnerCommand::ViewPartner { partner } => {
-                view_partner(&program_client, vault, partner)?
+                view_partner(&program_client, vault, partner).await?
             }
         },
         Command::Admin(admin) => match admin {
-            AdminCommand::InitPartner { partner } => init_partner(&program_client, vault, partner)?,
+            AdminCommand::InitPartner { partner } => {
+                init_partner(&program_client, vault, partner).await?
+            }
             AdminCommand::InitPartnerAllVault { partner } => {
                 init_partner_all_vault(&program_client, partner).await?
             }
             AdminCommand::UpdateFeeRatio { partner, fee_ratio } => {
-                update_fee_ratio(&program_client, vault, partner, fee_ratio)?
+                update_fee_ratio(&program_client, vault, partner, fee_ratio).await?
             }
             AdminCommand::FundPartner { partner, amount } => {
-                fund_partner(&program_client, vault, partner, amount)?
+                fund_partner(&program_client, vault, partner, amount).await?
             }
         },
     };

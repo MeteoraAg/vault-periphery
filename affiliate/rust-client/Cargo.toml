@@ -1,18 +1,18 @@
 [package]
 name = "rust-client"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2018"
 
 [features]
 devnet = []
 
 [dependencies]
-anchor-lang = {version = "0.26.0"}
-anchor-spl = {version = "0.26.0"}
-anchor-client = {version = "0.26.0"}
+anchor-lang = {version = "0.28.0"}
+anchor-spl = {version = "0.28.0"}
+anchor-client = {version = "0.28.0", features=["async"]}
 anyhow = "1.0"
 clap = {version = "3.0.10", features=["derive"]}
-mercurial-vault = { git = "https://github.com/mercurial-finance/vault-sdk", rev="ccc3132e97ed25bff677e88fc06f7db5e43332ca", features = ["cpi"] }
+mercurial-vault = { git = "https://github.com/mercurial-finance/vault-sdk", rev="b8c4e9f2b6ef28550a2145e11dc68a7cdf953c0d", features = ["cpi"] }
 affiliate =  { path = "../programs/affiliate"}
 spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
@@ -26,5 +26,6 @@ tokio = { version = "1", features = ["full"] }
 serde_json="1.0.85"
 serde = { version = "1.0.104", features = ["derive"] }
 hyper-tls="0.5.0"
-solana-program = "1.14.12"
-solana-sdk = "1.14.12"
+solana-program = "1.16.12"
+solana-sdk = "1.16.12"
+async-trait="0.1.52"
